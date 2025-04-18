@@ -11,7 +11,9 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = './.flask_session/'
 Session(app)
 
-SCOPE = 'user-modify-playback-state'
+SCOPE = 'user-read-playback-state user-modify-playback-state'
+
+silent_track = 'https://open.spotify.com/track/7p5bQJB4XsZJEEn6Tb7EaL?si=11c920e0f7234fdf'
 
 @app.route('/')
 def index():
@@ -55,7 +57,12 @@ def play_song():
     spotify = spotipy.Spotify(auth_manager=auth_manager)
 
     try:
-        spotify.start_playback(uris=[uri])
+        # Play on first device
+        devices = spotify.devices()['devices']
+        if len(devices) == 0:
+            return f"No devices available for playback"
+        chosen_device = devices[0] # choose first one
+        spotify.start_playback(device_id=chosen_device['id'], uris=[uri])
         return f"Playing {uri}"
     except spotipy.exceptions.SpotifyException as e:
         return f"Spotify API error: {e.http_status} - {e.reason}"
@@ -65,7 +72,6 @@ def sign_out():
     """Sign out of the Spotify Account"""
     session.pop("token_info", None)
     return redirect('/')
-
 
 if __name__ == '__main__':
     app.run(debug=True)
